@@ -191,6 +191,12 @@ button{font-family:inherit;}
   font-weight:800;text-decoration:underline;cursor:pointer;padding:10px;text-shadow:0 2px 6px rgba(24,52,20,.5);}
 .cheer .quietlink{color:var(--ink-soft);text-shadow:none;font-weight:700;}
 
+/* the build stamp — deliberately faint, it is for the grown-up */
+.vertag{display:block;width:100%;margin:14px 0 2px;background:none;border:none;cursor:pointer;
+  text-align:center;font-family:var(--body);font-weight:800;font-size:.72rem;letter-spacing:.09em;
+  color:rgba(255,255,255,.62);text-shadow:0 1px 4px rgba(24,52,20,.5);padding:6px;}
+.vertag:active{color:#fff;}
+
 /* ---------- THE QUEST STRIP ----------
    The Pokemon he is working toward, on screen the whole time. Every correct
    answer burns off some shadow, so progress is something he watches happen
@@ -559,6 +565,7 @@ input[type=text]{width:100%;padding:13px;border-radius:13px;border:2px solid var
     <div class="teamstrip" id="teamStrip"></div>
     <p class="nextnote" id="teamCaption" style="margin:10px 0 0"></p>
     <button class="quietlink" id="dexLink">see them all</button>
+    <button class="vertag" id="verTag" aria-label="version"></button>
   </section>
 
   <!-- ================= MEET THE SOUNDS ================= -->
@@ -701,6 +708,30 @@ input[type=text]{width:100%;padding:13px;border-radius:13px;border:2px solid var
       <p class="sub">The built-in voice can't say a pure sound — it adds a small "uh" to letters like <b>b</b> and <b>t</b>. Tap a letter and say its sound. Your recording then replaces the robot everywhere. Long-press a green tile to delete it.</p>
       <p class="sub" id="recStatus" style="color:var(--berry)"></p>
       <div class="recgrid" id="recGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="title">Family sync</h2>
+      <p class="sub">Type the same family code on every device and his progress follows him.
+      Stars, books and Pokémon are merged, never overwritten — a device that has been offline
+      cannot wipe what he did somewhere else.</p>
+      <input type="text" id="familyInput" maxlength="18" autocomplete="off" spellcheck="false"
+             placeholder="family code, e.g. LIM-FAMILY">
+      <div style="height:10px"></div>
+      <div class="btnrow">
+        <button class="btn ghost" id="syncBtn">Sync now</button>
+        <button class="btn ghost" id="syncOffBtn">Turn off</button>
+      </div>
+      <p class="sub" id="syncNote" style="margin:12px 0 0"></p>
+    </div>
+
+    <div class="card">
+      <h2 class="title">This build</h2>
+      <p class="sub">If the version here does not match what you just uploaded, the browser is still
+      serving a cached copy. Force update clears it and reloads.</p>
+      <div class="rows" id="buildRows"></div>
+      <div style="height:12px"></div>
+      <button class="btn ghost" id="forceBtn">Force update</button>
     </div>
 
     <div class="card">
@@ -1124,6 +1155,8 @@ function freshState(){
     auto:true,        /* roll straight into the next game             */
     wild:true,        /* a Pokemon appears after each game            */
     sfx:true,         /* chimes on correct answers                     */
+    family:'',        /* family code — the same one on every device    */
+    syncedAt:0,
     buddy:null,       /* the one who stands beside him at home         */
     gb:true, rate:80,
     reads:0, lastSeen:0
@@ -1468,8 +1501,17 @@ function confetti(count){
 function award(n, act, stars){
   const k=n+':'+act, had=S.done[k]||0;
   if(stars>had){ S.stars+=(stars-had); S.done[k]=stars; }
-  save();
+  save(); syncSoon();
 }
+
+/* =========================================================
+   BUILD STAMP
+   Shown on the home screen so it is obvious which build is running.
+   Keep APP_VERSION in step with CACHE in sw.js — if the two disagree,
+   the service worker is serving something stale.
+   ========================================================= */
+const APP_VERSION = '1.7.0';
+const APP_BUILT   = '2026-08-18';
 
 /* =========================================================
    SOUND
@@ -1548,6 +1590,84 @@ EVOLVED.forEach(e=>{
   EVO[e.from]=e.id;
   if(!DEX.some(m=>m.id===e.id)) DEX.push({id:e.id,name:e.name,type:e.type,read:false,route:99,evo:true});
 });
+
+/* =========================================================
+   FAMILY SYNC
+   Firebase Realtime Database over its REST endpoint — no SDK, so
+   nothing extra to download and the app still runs with the network
+   off. Progress MERGES rather than overwrites: stars and routes take
+   the higher value, books and Pokemon take the union. A device that
+   has been offline for a week can never wipe what he did meanwhile.
+   ========================================================= */
+const FB_URL  = 'https://family-db-d2198-default-rtdb.firebaseio.com';
+const FB_NODE = 'pokeReading';
+const FAMILY_KEY = 'poke_reading_family';
+
+function familyCode(){ return (S.family||'').trim().toUpperCase().replace(/[^A-Z0-9-]/g,''); }
+function familyURL(){
+  const c=familyCode();
+  return c ? FB_URL+'/'+FB_NODE+'/'+encodeURIComponent(c)+'.json' : null;
+}
+function syncPayload(){
+  return {
+    name:S.name, at:S.at, stars:S.stars, done:S.done, books:S.books,
+    caught:S.caught, buddy:S.buddy, reads:S.reads, lastSeen:S.lastSeen,
+    voiceInstr:S.voiceInstr, auto:S.auto, wild:S.wild, sfx:S.sfx,
+    gb:S.gb, rate:S.rate, ver:APP_VERSION, wroteAt:Date.now()
+  };
+}
+/* Realtime Database hands back a sparse array as an object, so never assume */
+function asArray(v){
+  if(Array.isArray(v)) return v.filter(x=>x!=null);
+  if(v && typeof v==='object') return Object.keys(v).map(k=>v[k]).filter(x=>x!=null);
+  return [];
+}
+function mergeRemote(r){
+  if(!r || typeof r!=='object') return false;
+  let changed=false;
+  ['stars','reads','at','lastSeen'].forEach(k=>{
+    if(typeof r[k]==='number' && r[k]>(S[k]||0)){ S[k]=r[k]; changed=true; }
+  });
+  if(r.done && typeof r.done==='object'){
+    for(const k in r.done){
+      if((r.done[k]||0) > (S.done[k]||0)){ S.done[k]=r.done[k]; changed=true; }
+    }
+  }
+  ['books','caught'].forEach(k=>{
+    asArray(r[k]).forEach(v=>{ if(S[k].indexOf(v)<0){ S[k].push(v); changed=true; } });
+  });
+  if(r.buddy && !S.buddy){ S.buddy=r.buddy; changed=true; }
+  if(r.name && !S.name){ S.name=r.name; changed=true; }
+  if(S.at<1 || S.at>LEVELS.length) S.at=Math.min(LEVELS.length, S.books.length+1);
+  return changed;
+}
+let syncing=false;
+async function syncNow(){
+  const url=familyURL();
+  if(!url) return {ok:false, msg:'Enter a family code first.'};
+  if(syncing) return {ok:false, msg:'Already syncing…'};
+  syncing=true;
+  try{
+    const get=await fetch(url,{cache:'no-store'});
+    if(!get.ok) throw new Error('read failed ('+get.status+')');
+    const changed=mergeRemote(await get.json());
+    const put=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},
+                               body:JSON.stringify(syncPayload())});
+    if(!put.ok) throw new Error('write failed ('+put.status+')');
+    S.syncedAt=Date.now(); save();
+    return {ok:true, changed:changed,
+            msg:changed ? 'Synced — progress from another device merged in.' : 'Synced.'};
+  }catch(e){
+    return {ok:false, msg:'Could not reach the family database — '+(e.message||'offline')+'.'};
+  }finally{ syncing=false; }
+}
+/* a quiet push after he has been playing; never often enough to nag the network */
+let syncTimer=null;
+function syncSoon(){
+  if(!familyCode()) return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>{ syncNow(); }, 6000);
+}
 
 /* =========================================================
    THE QUEST STRIP
@@ -1729,7 +1849,7 @@ function throwBall(){
       if(isNew){
         S.caught.push(mon.id);
         if(!S.buddy) S.buddy=mon.id;
-        save(); confetti(60); sfxCatch();
+        save(); syncSoon(); confetti(60); sfxCatch();
         cheer('You caught ' + mon.name + '!', 0, mon.name + ' joined your team.',
               ()=> S.auto ? playNext() : goHome());
         return;
@@ -1816,6 +1936,8 @@ function goHome(){
       bb.onclick=()=>{ if(bm){ say(bm.name,{rate:0.8}); sfxReveal(); } };
     } else bb.style.display='none';
   }
+  const vt=$('verTag');
+  if(vt) vt.textContent='v'+APP_VERSION;
   const caughtHere=here.filter(id=>S.caught.indexOf(id)>=0).length;
   $('teamCaption').textContent = caughtHere < here.length
     ? 'On this route: ' + caughtHere + ' of ' + here.length + ' found · tap one to make it your buddy'
@@ -1825,6 +1947,7 @@ function goHome(){
 $('playBtn').onclick = ()=>{ warmUpVoice(); playNext(); };
 $('homeFace').onclick = ()=> say('Hi ' + (S.name||'Jonah') + '. Let us read!', {rate:0.85});
 $('dexLink').onclick = openDex;
+$('verTag').onclick = ()=> $('gearBtn').click();
 
 let warmed=false;
 function warmUpVoice(){
@@ -2248,6 +2371,7 @@ function openAdult(){
     ['Sounds taught so far', String(graphemesUpTo(at).length)],
     ['Heart words taught', String(heartUpTo(at).length)],
     ['Last read', S.lastSeen ? new Date(S.lastSeen).toLocaleDateString() : '—'],
+    ['Family sync', familyCode() ? familyCode() : 'off'],
     ['Saving to', HAS_WS ? 'app storage' : (HAS_LS ? 'this device' : 'memory only — progress will not survive a reload')]
   ];
   const box=$('statRows'); box.innerHTML='';
@@ -2273,6 +2397,23 @@ function openAdult(){
     grid.appendChild(c);
   });
 
+  $('familyInput').value = S.family || '';
+  syncNote();
+  const swState = !('serviceWorker' in navigator) ? 'not supported'
+    : (navigator.serviceWorker.controller ? 'active — cached copy in use' : 'none — loading fresh');
+  const brows=[
+    ['Version', 'v'+APP_VERSION],
+    ['Built', APP_BUILT],
+    ['Service worker', swState],
+    ['Address', (location.pathname||'/').replace(/index\.html$/,'') || '/']
+  ];
+  const bbox=$('buildRows'); bbox.innerHTML='';
+  brows.forEach(r=>{
+    const d=document.createElement('div'); d.className='row';
+    d.innerHTML='<span class="k">'+esc(r[0])+'</span><span class="v">'+esc(r[1])+'</span>';
+    bbox.appendChild(d);
+  });
+
   $('voiceToggle').classList.toggle('on', !!S.voiceInstr);
   $('gbToggle').classList.toggle('on', !!S.gb);
   $('autoToggle').classList.toggle('on', !!S.auto);
@@ -2294,11 +2435,53 @@ $('sfxToggle').onclick=()=>{ S.sfx=!S.sfx; save(); $('sfxToggle').classList.togg
 $('nameInput').addEventListener('input', e=>{ S.name=e.target.value.slice(0,14); save(); });
 $('rateRange').addEventListener('input', e=>{ S.rate=parseInt(e.target.value,10); save(); setRateLabel(); });
 $('rateRange').addEventListener('change', ()=> say('The cat sat on the mat.'));
+function syncNote(msg){
+  const el=$('syncNote'); if(!el) return;
+  const when = S.syncedAt ? 'Last synced ' + new Date(S.syncedAt).toLocaleString() + '.' : 'Never synced yet.';
+  el.textContent = msg ? msg + ' ' + when : (familyCode() ? when : 'Not set up — his progress stays on this device only.');
+}
+$('familyInput').addEventListener('input', e=>{
+  S.family = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,18);
+  if(e.target.value !== S.family) e.target.value = S.family;
+  if(HAS_LS){ try{ localStorage.setItem(FAMILY_KEY, S.family); }catch(err){} }
+  save(); syncNote();
+});
+$('syncBtn').onclick = async ()=>{
+  const b=$('syncBtn'); b.disabled=true; b.textContent='Syncing…';
+  syncNote('Contacting the family database…');
+  const r=await syncNow();
+  b.disabled=false; b.textContent='Sync now';
+  syncNote(r.msg);
+  if(r.ok && r.changed) openAdult();
+};
+$('syncOffBtn').onclick = ()=>{
+  if(!confirm('Stop syncing on this device? Progress already saved elsewhere is kept.')) return;
+  S.family=''; save();
+  if(HAS_LS){ try{ localStorage.removeItem(FAMILY_KEY); }catch(e){} }
+  $('familyInput').value=''; syncNote('Sync turned off.');
+};
+
+$('forceBtn').onclick = async ()=>{
+  const btn=$('forceBtn'); btn.disabled=true; btn.textContent='Clearing…';
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if(window.caches){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch(e){}
+  /* progress lives in storage, not the cache, so nothing of his is lost */
+  location.reload();
+};
+
 $('resetBtn').onclick = async ()=>{
   if(!confirm('Clear all stars, books, caught Pokémon and progress?')) return;
   await storeDel(KEY);
-  const keepPhoto=S.photo, keepName=S.name;
-  S=freshState(); S.photo=keepPhoto; S.name=keepName;
+  const keepPhoto=S.photo, keepName=S.name, keepFamily=S.family;
+  S=freshState(); S.photo=keepPhoto; S.name=keepName; S.family=keepFamily;
   save(); goHome();
 };
 
@@ -2453,8 +2636,13 @@ function dismissSplash(){
   loadRecs();
   await loadState();
   if(!S.photo && HAS_LS){ try{ S.photo = localStorage.getItem(PHOTO_KEY) || ''; }catch(e){} }
+  if(!S.family && HAS_LS){ try{ S.family = localStorage.getItem(FAMILY_KEY) || ''; }catch(e){} }
   pickVoice();
   goHome();
+  /* pull anything he earned on another device, then redraw if it changed */
+  if(familyCode()){
+    syncNow().then(r=>{ if(r.ok && r.changed && current==='scr-home') goHome(); });
+  }
   if('serviceWorker' in navigator){
     try{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){}
   }
