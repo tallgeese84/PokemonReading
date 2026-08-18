@@ -1,4 +1,4 @@
-# Poké Reading — v1.7.0
+# Poké Reading — v1.7.1
 
 Learn-to-read app for Jonah. Synthetic phonics wrapped in a Pokémon journey:
 12 routes, one decodable book each, and Pokémon whose names he can read by
@@ -9,7 +9,7 @@ the time he meets them.
 Copy all five files to the repo root and push. GitHub Pages serves it as-is.
 
     index.html            the whole app, self-contained
-    sw.js                 service worker (cache: poke-reading-1.7.0)
+    sw.js                 service worker (cache: poke-reading-1.7.1)
     manifest.webmanifest  PWA install
     icon-192.png
     icon-512.png
@@ -46,3 +46,11 @@ Grown-ups → Pictures → **Download all artwork** fetches them in one pass.
 Grown-ups → **Record the sounds in your voice**. Speech synthesis cannot say a
 clean /b/ — it adds "buh", which is exactly what makes blending hard. Your
 recordings replace it everywhere. One tap per letter, 46 in total.
+
+## Changelog
+
+- **1.7.1** — app icon is now a purple ball, drawn to stay legible down to 48px
+- **1.7.0** — family sync (Firebase RTDB, REST, merge-not-overwrite)
+- **1.6.0** — version stamp on the home screen, build panel, force update
+- earlier — quest strip, per-answer sound, shorter activities, scaffolding
+  after two misses, evolution on duplicates, buddy on the home screen
