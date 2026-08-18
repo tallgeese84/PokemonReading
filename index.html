@@ -20,7 +20,7 @@
   position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;
   align-items:center;justify-content:flex-end;overflow:hidden;
   background:#77B35B;
-  transition:opacity .55s ease, visibility .55s;
+  transition:opacity .42s ease .2s, visibility .42s .2s;
 }
 #splash.gone{opacity:0;visibility:hidden;pointer-events:none;}
 #splash .sky{position:absolute;inset:0;width:100%;height:100%;}
@@ -34,6 +34,9 @@
   filter:drop-shadow(0 16px 22px rgba(38,36,63,.28));
   animation:heroIn .55s ease-out both;
   margin-bottom:2vh;
+  /* On dismiss he flies onto exactly where the home screen draws him, so the
+     two copies line up and it reads as settling rather than jumping. */
+  transition:transform .62s cubic-bezier(.34,.85,.3,1);
 }
 @keyframes heroIn{from{transform:translateY(18px);opacity:0;}to{transform:none;opacity:1;}}
 #splash .cap{
@@ -187,6 +190,41 @@ button{font-family:inherit;}
 .quietlink{display:block;margin:16px auto 0;background:none;border:none;color:#fff;font-size:1.05rem;
   font-weight:800;text-decoration:underline;cursor:pointer;padding:10px;text-shadow:0 2px 6px rgba(24,52,20,.5);}
 .cheer .quietlink{color:var(--ink-soft);text-shadow:none;font-weight:700;}
+
+/* ---------- THE QUEST STRIP ----------
+   The Pokemon he is working toward, on screen the whole time. Every correct
+   answer burns off some shadow, so progress is something he watches happen
+   instead of a hidden counter. */
+#quest{display:none;align-items:center;gap:12px;margin:0 0 14px;padding:9px 14px 9px 9px;
+  background:rgba(255,255,255,.94);border:3px solid rgba(255,255,255,.85);border-radius:22px;
+  box-shadow:0 6px 0 rgba(24,52,20,.12),0 12px 22px rgba(24,52,20,.16);}
+#quest.on{display:flex;}
+#quest.bump{animation:qbump .34s cubic-bezier(.3,1.5,.4,1);}
+@keyframes qbump{0%{transform:scale(1);}40%{transform:scale(1.035);}100%{transform:scale(1);}}
+.qmon{position:relative;width:62px;height:62px;flex:none;border-radius:50%;overflow:hidden;
+  background:#F3EEE2;display:grid;place-items:center;}
+.qmon img{position:absolute;inset:0;width:104%;height:104%;margin:-2%;object-fit:contain;}
+.qmon img.dark{filter:brightness(0);transition:opacity .5s ease;}
+.qmid{flex:1;min-width:0;}
+.qbar{height:14px;border-radius:99px;background:#E6DCC9;overflow:hidden;}
+.qbar i{display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,#F5B301,#EE1C25);transition:width .42s cubic-bezier(.3,1.2,.4,1);}
+.qcap{font-family:var(--display);font-weight:600;font-size:.98rem;color:var(--ink-soft);margin-top:4px;}
+.qball{width:34px;height:34px;flex:none;opacity:.5;}
+#quest.full .qball{opacity:1;animation:qbump .5s ease 2;}
+#quest.full .qcap{color:var(--ball);}
+
+/* a correct answer should feel like something happened */
+@keyframes popper{0%{transform:scale(1);}45%{transform:scale(1.14);}100%{transform:scale(1);}}
+.pop{animation:popper .32s cubic-bezier(.3,1.4,.4,1);}
+@keyframes fadeup{from{opacity:1;transform:translateY(0) scale(1);}to{opacity:0;transform:translateY(-42px) scale(1.5);}}
+.spark{position:fixed;z-index:80;pointer-events:none;font-size:1.7rem;animation:fadeup .75s ease-out forwards;}
+
+/* the buddy stands beside him on the home screen */
+.buddy{position:absolute;right:3%;bottom:2px;width:23%;max-width:106px;z-index:3;cursor:pointer;
+  filter:drop-shadow(0 8px 10px rgba(24,52,20,.32));animation:bob 2.6s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
+.buddy img{width:100%;height:auto;display:block;}
 
 /* ---------- SOUND BAR ---------- */
 .wordstage{text-align:center;padding:10px 0 4px;}
@@ -488,12 +526,22 @@ input[type=text]{width:100%;padding:13px;border-radius:13px;border:2px solid var
     <button class="barbtn" id="barSay" aria-label="Hear it again">🔊</button>
   </div>
 
+  <div id="quest">
+    <div class="qmon"><img id="qFull" alt=""><img id="qDark" class="dark" alt=""></div>
+    <div class="qmid">
+      <div class="qbar"><i id="qFill"></i></div>
+      <div class="qcap" id="qCap">Who is it?</div>
+    </div>
+    <div class="qball" id="qBall"></div>
+  </div>
+
 
   <!-- ================= HOME — one button ================= -->
   <section id="scr-home" class="screen active">
     <div class="hero">
       <button class="gear" id="gearBtn" aria-label="Grown-ups">⚙️</button>
       <div class="mascot" id="homeFace"></div>
+      <div class="buddy" id="buddyBox" style="display:none"></div>
       <h2 id="homeHi">Hi Jonah</h2>
       <div class="chips">
         <span class="chip gold" id="homeStars">⭐ 0</span>
@@ -640,6 +688,7 @@ input[type=text]{width:100%;padding:13px;border-radius:13px;border:2px solid var
         <div class="row"><span class="k">British spelling &amp; voice</span><button class="toggle" id="gbToggle"><i></i></button></div>
         <div class="row"><span class="k">Keep going automatically after each game</span><button class="toggle" id="autoToggle"><i></i></button></div>
         <div class="row"><span class="k">Wild Pokémon after every game</span><button class="toggle" id="wildToggle"><i></i></button></div>
+        <div class="row"><span class="k">Sound effects</span><button class="toggle" id="sfxToggle"><i></i></button></div>
       </div>
       <div style="height:12px"></div>
       <label class="sub" style="display:block;margin:0 0 4px">Speaking speed</label>
@@ -1074,6 +1123,8 @@ function freshState(){
     voiceInstr:true,  /* speak the instruction — he cannot read UI    */
     auto:true,        /* roll straight into the next game             */
     wild:true,        /* a Pokemon appears after each game            */
+    sfx:true,         /* chimes on correct answers                     */
+    buddy:null,       /* the one who stands beside him at home         */
     gb:true, rate:80,
     reads:0, lastSeen:0
   };
@@ -1395,7 +1446,7 @@ function setBar(total, idx, replay){
   barReplay=replay||null;
   $('barSay').classList.toggle('hidden', !replay);
 }
-function hideBar(){ $('abar').classList.remove('on'); barReplay=null; }
+function hideBar(){ $('abar').classList.remove('on'); barReplay=null; questHide(); }
 $('barHome').onclick = goHome;
 $('barSay').onclick = ()=>{ if(barReplay) barReplay(); };
 
@@ -1418,6 +1469,129 @@ function award(n, act, stars){
   const k=n+':'+act, had=S.done[k]||0;
   if(stars>had){ S.stars+=(stars-had); S.done[k]=stars; }
   save();
+}
+
+/* =========================================================
+   SOUND
+   Tones are synthesised, so there are no audio files to ship or
+   fetch. A wrong answer gets a soft low note, never a buzzer —
+   he is learning to read and mistakes are part of it.
+   ========================================================= */
+let AC=null;
+function ac(){
+  if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+  if(AC.state==='suspended'){ try{ AC.resume(); }catch(e){} }
+  return AC;
+}
+function beep(freq, at, dur, vol, type){
+  if(!S || !S.sfx) return;
+  const a=ac(); if(!a) return;
+  try{
+    const o=a.createOscillator(), g=a.createGain(), t=a.currentTime+at;
+    o.type=type||'triangle'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.linearRampToValueAtTime(vol,t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t+dur+0.03);
+  }catch(e){}
+}
+function sfxRight(){ beep(660,0,.13,.15); beep(990,.08,.17,.12); }
+function sfxRetry(){ beep(300,0,.17,.09,'sine'); }
+function sfxReveal(){ beep(784,0,.10,.11); beep(1046,.07,.14,.10); }
+function sfxCatch(){ [523,659,784,1047].forEach((f,i)=>beep(f,i*.09,.24,.14)); }
+function sfxDone(){ [523,659,784,1047,1319].forEach((f,i)=>beep(f,i*.075,.3,.13)); }
+
+/* a little burst where he tapped, so the reward is where his eye already is */
+function spark(el, ch){
+  if(!el || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  const r=el.getBoundingClientRect();
+  const d=document.createElement('div');
+  d.className='spark'; d.textContent=ch||'⭐';
+  d.style.left=(r.left+r.width/2-14)+'px';
+  d.style.top=(r.top+r.height/2-14)+'px';
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(),800);
+}
+/* every correct answer, everywhere, goes through here */
+function gotItRight(el, ch){
+  if(el){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  sfxRight(); spark(el, ch); questStep();
+}
+function gotItWrong(){ sfxRetry(); }
+
+/* =========================================================
+   EVOLUTION
+   Meeting one he already owns used to give nothing, and that was
+   nearly half of all encounters. Now it evolves instead.
+   ========================================================= */
+const EVOLVED = [
+  {id:26,name:'Raichu',type:'electric',from:25},   {id:51,name:'Dugtrio',type:'ground',from:50},
+  {id:24,name:'Arbok',type:'poison',from:23},      {id:67,name:'Machoke',type:'fighting',from:66},
+  {id:64,name:'Kadabra',type:'psychic',from:63},   {id:87,name:'Dewgong',type:'water',from:86},
+  {id:91,name:'Cloyster',type:'water',from:90},    {id:105,name:'Marowak',type:'ground',from:104},
+  {id:230,name:'Kingdra',type:'water',from:117},   {id:119,name:'Seaking',type:'water',from:118},
+  {id:101,name:'Electrode',type:'electric',from:100},{id:73,name:'Tentacruel',type:'water',from:72},
+  {id:38,name:'Ninetales',type:'fire',from:37},    {id:53,name:'Persian',type:'normal',from:52},
+  {id:71,name:'Victreebel',type:'grass',from:70},  {id:184,name:'Azumarill',type:'water',from:183},
+  {id:256,name:'Combusken',type:'fire',from:255},  {id:329,name:'Vibrava',type:'ground',from:328},
+  {id:168,name:'Ariados',type:'bug',from:167},     {id:404,name:'Luxio',type:'electric',from:403},
+  {id:600,name:'Klang',type:'steel',from:599},     {id:499,name:'Pignite',type:'fire',from:498},
+  {id:685,name:'Slurpuff',type:'fairy',from:684},  {id:195,name:'Quagsire',type:'water',from:194},
+  {id:350,name:'Milotic',type:'water',from:349},   {id:469,name:'Yanmega',type:'bug',from:193},
+  {id:208,name:'Steelix',type:'steel',from:95},    {id:130,name:'Gyarados',type:'water',from:129},
+  {id:169,name:'Crobat',type:'poison',from:42},    {id:59,name:'Arcanine',type:'fire',from:58},
+  {id:42,name:'Golbat',type:'poison',from:41}
+];
+const EVO={};
+EVOLVED.forEach(e=>{
+  EVO[e.from]=e.id;
+  if(!DEX.some(m=>m.id===e.id)) DEX.push({id:e.id,name:e.name,type:e.type,read:false,route:99,evo:true});
+});
+
+/* =========================================================
+   THE QUEST STRIP
+   ========================================================= */
+let Q=null;
+function questStart(steps){
+  const mon = S.wild ? wildPick() : null;
+  Q = mon ? {mon:mon, need:Math.max(1,steps), got:0} : null;
+  renderQuest();
+}
+function renderQuest(){
+  const q=$('quest'); if(!q) return;
+  if(!Q){ q.classList.remove('on','full'); return; }
+  q.classList.add('on');
+  const full=$('qFull'), dark=$('qDark'), url=spriteURL(Q.mon.id);
+  if(full.getAttribute('src')!==url){ full.src=url; dark.src=url; }
+  if(!$('qBall').innerHTML) $('qBall').innerHTML=BALL_SVG;
+  const p=Math.min(1, Q.got/Q.need);
+  dark.style.opacity=String(1-p);
+  $('qFill').style.width=Math.round(p*100)+'%';
+  q.classList.toggle('full', p>=1);
+  $('qCap').textContent = p>=1 ? 'Catch ' + Q.mon.name + '!'
+                        : p>=0.55 ? 'Almost there…' : 'Who is coming?';
+}
+function questStep(){
+  if(!Q) return;
+  const was=Q.got>=Q.need;
+  Q.got++;
+  renderQuest();
+  const q=$('quest');
+  if(q){ q.classList.remove('bump'); void q.offsetWidth; q.classList.add('bump'); }
+  if(!was && Q.got>=Q.need) sfxReveal();
+}
+function questHide(){ Q=null; const q=$('quest'); if(q) q.classList.remove('on','full'); }
+
+/* After two misses on the same question, take away wrong choices so he can
+   always get there. Being stuck is what makes him stop. */
+function easeOff(container, isWrong){
+  const kids=[...container.children].filter(b=>!b.classList.contains('used') && b.style.pointerEvents!=='none');
+  const wrong=kids.filter(isWrong);
+  const drop=Math.max(0, Math.min(wrong.length, kids.length-2));
+  shuffle(wrong).slice(0,drop).forEach(b=>{
+    b.style.transition='opacity .3s'; b.style.opacity='.18'; b.style.pointerEvents='none';
+  });
 }
 
 /* =========================================================
@@ -1457,9 +1631,11 @@ function finishAct(id, clean, title, msg){
   const stars = id==='meet' ? 1 : (clean ? 2 : 1);
   award(LV.n, id, stars);
   S.reads++; S.lastSeen=Date.now(); save();
+  sfxDone();
+  const waiting = Q ? Q.mon : null;
+  questHide();
   cheer(title, stars, msg, ()=>{
-    const mon = S.wild ? wildPick() : null;
-    if(mon) startWild(mon);
+    if(waiting) startWild(waiting, true);
     else if(S.auto) playNext();
     else goHome();
   });
@@ -1500,15 +1676,15 @@ function wildPick(){
 }
 
 let W=null;
-function startWild(mon){
+function startWild(mon, seen){
   const already = S.caught.indexOf(mon.id)>=0;
-  W = {mon:mon, done:false, already:already};
+  W = {mon:mon, done:false, already:already, seen:!!seen};
   hideBar();
   $('wildBox').style.background = 'linear-gradient(180deg,'+(TYPE_COLOUR[mon.type]||'#A8A77A')+',#8fbf6a)';
-  $('wildLabel').textContent = already ? 'An old pal!' : 'Who is that?';
+  $('wildLabel').textContent = already ? 'An old pal!' : (seen ? 'You found ' + mon.name + '!' : 'Who is that?');
   const stage=$('monStage');
   stage.className='monstage'; stage.innerHTML='';
-  W.img = monImg(mon.id, already ? 'shown' : '');
+  W.img = monImg(mon.id, (already || W.seen) ? 'shown' : '');
   stage.appendChild(W.img);
 
   const L=LEVELS[mon.route-1];
@@ -1550,10 +1726,34 @@ function throwBall(){
     setTimeout(()=>{
       stage.classList.remove('wobble');
       const mon=W.mon, isNew = S.caught.indexOf(mon.id)<0;
-      if(isNew){ S.caught.push(mon.id); save(); confetti(60); }
-      cheer(isNew ? 'You caught ' + mon.name + '!' : mon.name + ' says hi!',
-            0,
-            isNew ? mon.name + ' joined your team.' : 'You read the name again — that is how it sticks.',
+      if(isNew){
+        S.caught.push(mon.id);
+        if(!S.buddy) S.buddy=mon.id;
+        save(); confetti(60); sfxCatch();
+        cheer('You caught ' + mon.name + '!', 0, mon.name + ' joined your team.',
+              ()=> S.auto ? playNext() : goHome());
+        return;
+      }
+      /* already his — evolve it instead of handing him nothing */
+      const to = EVO[mon.id];
+      if(to && S.caught.indexOf(to)<0){
+        const ev = monById(to);
+        S.caught.push(to); save();
+        confetti(80); sfxCatch();
+        if(W.img){ W.img.style.transition='opacity .35s'; W.img.style.opacity='0'; }
+        setTimeout(()=>{
+          const st=$('monStage');
+          if(st){ st.innerHTML=''; const im=monImg(to,'shown'); im.classList.add('monfall'); st.appendChild(im); }
+          $('wildLabel').textContent = ev ? ev.name : '';
+          sfxReveal();
+          setTimeout(()=> cheer(mon.name + ' evolved!', 0,
+            'It is ' + (ev?ev.name:'something new') + ' now.',
+            ()=> S.auto ? playNext() : goHome()), 900);
+        }, 380);
+        return;
+      }
+      sfxCatch();
+      cheer(mon.name + ' says hi!', 0, 'You read the name again — that is how it sticks.',
             ()=> S.auto ? playNext() : goHome());
     }, 1500);
   }, 1000);
@@ -1598,16 +1798,27 @@ function goHome(){
       b.className='slotmon '+(got?'got':'ghost');
       b.appendChild(monImg(id));
       b.setAttribute('aria-label', got ? (m?m.name:'') : 'not caught yet');
-      if(got) b.onclick=()=> say(m?m.name:'', {rate:0.75});
+      if(got) b.onclick=()=>{ S.buddy=id; save(); say(m?m.name:'',{rate:0.75}); sfxReveal(); goHome(); };
       else b.onclick=()=> say('Read to find out who that is!', {rate:0.85});
     } else {
       b.className='slotmon empty'; b.setAttribute('aria-label','empty');
     }
     strip.appendChild(b);
   }
+  const bb=$('buddyBox');
+  if(bb){
+    const bid = (S.buddy && S.caught.indexOf(S.buddy)>=0) ? S.buddy : S.caught[S.caught.length-1];
+    if(bid!=null){
+      const bm=monById(bid);
+      bb.style.display=''; bb.innerHTML='';
+      bb.appendChild(monImg(bid));
+      bb.setAttribute('aria-label', bm?bm.name:'buddy');
+      bb.onclick=()=>{ if(bm){ say(bm.name,{rate:0.8}); sfxReveal(); } };
+    } else bb.style.display='none';
+  }
   const caughtHere=here.filter(id=>S.caught.indexOf(id)>=0).length;
   $('teamCaption').textContent = caughtHere < here.length
-    ? 'On this route: ' + caughtHere + ' of ' + here.length + ' found'
+    ? 'On this route: ' + caughtHere + ' of ' + here.length + ' found · tap one to make it your buddy'
     : 'Every Pokémon on this route is yours';
   show('scr-home');
 }
@@ -1617,6 +1828,7 @@ $('dexLink').onclick = openDex;
 
 let warmed=false;
 function warmUpVoice(){
+  ac();
   if(warmed||!TTS) return; warmed=true;
   try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; TTS.speak(u); }catch(e){}
   pickVoice();
@@ -1635,6 +1847,7 @@ function openDex(){
   const grid=$('dexGrid'); grid.innerHTML='';
   DEX.forEach(m=>{
     const got=S.caught.indexOf(m.id)>=0;
+    if(m.evo && !got) return;
     const seen=got || m.route<=at;
     const c=document.createElement('button'); c.type='button';
     c.className='dexcell'+(got?'':' locked');
@@ -1654,7 +1867,7 @@ $('dexBack').onclick = goHome;
    1 · MEET THE SOUNDS
    ========================================================= */
 let M=null;
-function startMeet(){ M={i:0}; show('scr-meet'); tell('Listen to the new sound.'); drawMeet(); }
+function startMeet(){ M={i:0}; questStart(LV.add.length); show('scr-meet'); tell('Listen to the new sound.'); drawMeet(); }
 function drawMeet(){
   const g=LV.add[M.i], e=G[g];
   setBar(LV.add.length, M.i, ()=> sayMeet(g));
@@ -1669,6 +1882,7 @@ function drawMeet(){
 }
 function sayMeet(g){ sayGrapheme(g,{done:()=> setTimeout(()=>say(G[g][1],{rate:0.8}),280)}); }
 $('meetNext').onclick = ()=>{
+  gotItRight($('meetNext'),'👂');
   if(M.i<LV.add.length-1){ M.i++; drawMeet(); }
   else finishAct('meet', true, 'Sounds met!', '');
 };
@@ -1677,14 +1891,15 @@ $('meetNext').onclick = ()=>{
    2 · SOUND HUNT
    ========================================================= */
 let H=null;
-const HUNT_ROUNDS=8;
+const HUNT_ROUNDS=5;
 function startHunt(){
   const skip=['ll','ss','ff','zz'];
   const learned=graphemesUpTo(LV.n).filter(g=>skip.indexOf(g)<0);
   const fresh=LV.add.filter(g=>skip.indexOf(g)<0);
   const q=[];
   for(let i=0;i<HUNT_ROUNDS;i++) q.push((fresh.length && Math.random()<0.65) ? pick(fresh) : pick(learned));
-  H={q:q,i:0,wrong:0,pool:learned};
+  H={q:q,i:0,wrong:0,miss:0,pool:learned};
+  questStart(HUNT_ROUNDS);
   show('scr-hunt'); tell('Find the sound.'); drawHunt();
 }
 function drawHunt(){
@@ -1706,13 +1921,16 @@ function huntPick(g,btn,target){
   if(g===target){
     btn.classList.add('right');
     [...$('huntOpts').children].forEach(b=>b.style.pointerEvents='none');
+    gotItRight(btn);
     setTimeout(()=>{
-      if(H.i<HUNT_ROUNDS-1){ H.i++; drawHunt(); }
+      if(H.i<HUNT_ROUNDS-1){ H.i++; H.miss=0; drawHunt(); }
       else finishAct('hunt', H.wrong===0, 'Every sound found!', '');
     },600);
   } else {
-    H.wrong++; btn.classList.add('wrong');
+    H.wrong++; H.miss++; gotItWrong();
+    btn.classList.add('wrong');
     setTimeout(()=>btn.classList.remove('wrong'),400);
+    if(H.miss>=2) easeOff($('huntOpts'), b=>b!==btn && b.textContent!==(target.indexOf('_')>=0?target.replace('_','–'):target));
     setTimeout(()=> sayGrapheme(target),260);
   }
 }
@@ -1722,8 +1940,8 @@ function huntPick(g,btn,target){
    ========================================================= */
 let B=null;
 function startBlend(){
-  B={q:shuffle(LV.blend), i:0, wrong:0, blended:false};
-  show('scr-blend'); tell('Tap the dots, then blend the word.'); drawBlend();
+  B={q:shuffle(LV.blend).slice(0,5), i:0, wrong:0, blended:false, miss:0};
+  questStart(B.q.length); show('scr-blend'); tell('Tap the dots, then blend the word.'); drawBlend();
 }
 function drawBlend(){
   const w=B.q[B.i];
@@ -1776,10 +1994,13 @@ function showBlendPics(w){
       if(o===w){
         b.classList.add('right');
         [...box.children].forEach(x=>x.style.pointerEvents='none');
+        gotItRight(b);
         say(w,{rate:0.8});
         setTimeout(nextBlend,760);
       } else {
-        B.wrong++; b.classList.add('wrong'); b.style.pointerEvents='none';
+        B.wrong++; B.miss++; gotItWrong();
+        b.classList.add('wrong'); b.style.pointerEvents='none';
+        if(B.miss>=2) easeOff(box, x=>x.getAttribute('aria-label')!==w);
         setTimeout(()=> blendRun(B.tiles,B.parts,w,()=>{}),240);
       }
     };
@@ -1789,13 +2010,14 @@ function showBlendPics(w){
   $('blendPickWrap').style.display='';
 }
 function showBlendReveal(w){
+  gotItRight($('blendNext'));
   $('blendGo').style.display='none';
   $('blendArt').textContent=ART[w]||'✅';
   $('blendRevealWrap').style.display='';
 }
 $('blendNext').onclick = nextBlend;
 function nextBlend(){
-  if(B.i<B.q.length-1){ B.i++; drawBlend(); }
+  if(B.i<B.q.length-1){ B.i++; B.miss=0; drawBlend(); }
   else finishAct('blend', B.wrong===0, 'You blended them all!', '');
 }
 
@@ -1804,8 +2026,8 @@ function nextBlend(){
    ========================================================= */
 let BD=null;
 function startBuild(){
-  BD={q:shuffle(LV.build), i:0, wrong:0};
-  show('scr-build'); tell('Build the word.'); drawBuild();
+  BD={q:shuffle(LV.build).slice(0,4), i:0, wrong:0, miss:0};
+  questStart(BD.q.length); show('scr-build'); tell('Build the word.'); drawBuild();
 }
 function drawBuild(){
   const w=BD.q[BD.i];
@@ -1840,19 +2062,21 @@ function buildTap(g,btn){
     if(want.cls==='silent') say('silent e',{rate:0.85});
     else if(want.magic==='start') say(want.sound,{rate:0.7,pitch:1.0});
     else sayGrapheme(g);
-    BD.at++;
+    BD.at++; BD.miss=0;
     if(BD.at>=BD.parts.length){
       [...$('buildTiles').children].forEach(b=>b.style.pointerEvents='none');
       setTimeout(()=> say(BD.q[BD.i],{rate:0.75,done:()=>{
+        gotItRight($('buildSlots'));
         setTimeout(()=>{
-          if(BD.i<BD.q.length-1){ BD.i++; drawBuild(); }
+          if(BD.i<BD.q.length-1){ BD.i++; BD.miss=0; drawBuild(); }
           else finishAct('build', BD.wrong===0, 'All built!', '');
         },380);
       }}),520);
     }
   } else {
-    BD.wrong++;
+    BD.wrong++; BD.miss++; gotItWrong();
     btn.classList.add('wrong'); setTimeout(()=>btn.classList.remove('wrong'),400);
+    if(BD.miss>=2) easeOff($('buildTiles'), b=>b.textContent!==want.g);
     setTimeout(()=>{
       if(want.cls==='silent') say('you need the silent e',{rate:0.85});
       else if(want.magic==='start') say(want.sound,{rate:0.7,pitch:1.0});
@@ -1866,7 +2090,8 @@ function buildTap(g,btn){
    ========================================================= */
 let HW=null;
 function startHeart(){
-  HW={i:0,wrong:0,quiz:[],qi:0,phase:'teach'};
+  HW={i:0,wrong:0,qmiss:0,quiz:[],qi:0,phase:'teach'};
+  questStart(LV.heart.length+3);
   show('scr-heart'); tell('This word is tricky. Learn it by heart.'); drawHeart();
 }
 function heartHtml(h){
@@ -1883,8 +2108,9 @@ function drawHeart(){
   setTimeout(()=> say(h.w,{rate:0.75}),380);
 }
 $('heartGot').onclick = ()=>{
+  gotItRight($('heartGot'),'❤️');
   if(HW.i<LV.heart.length-1){ HW.i++; drawHeart(); }
-  else { HW.phase='quiz'; HW.quiz=shuffle(LV.heart.map(h=>h.w)); HW.qi=0; tell('Now listen, and tap the word.'); drawHeartQuiz(); }
+  else { HW.phase='quiz'; HW.quiz=shuffle(LV.heart.map(h=>h.w)).slice(0,3); HW.qi=0; tell('Now listen, and tap the word.'); drawHeartQuiz(); }
 };
 function drawHeartQuiz(){
   const w=HW.quiz[HW.qi];
@@ -1903,12 +2129,15 @@ function drawHeartQuiz(){
       if(o===w){
         b.classList.add('right');
         [...box.children].forEach(x=>x.style.pointerEvents='none');
+        gotItRight(b);
         setTimeout(()=>{
-          if(HW.qi<HW.quiz.length-1){ HW.qi++; drawHeartQuiz(); }
+          if(HW.qi<HW.quiz.length-1){ HW.qi++; HW.qmiss=0; drawHeartQuiz(); }
           else finishAct('heart', HW.wrong===0, 'Words by heart!', '');
         },620);
       } else {
-        HW.wrong++; b.classList.add('wrong'); b.style.pointerEvents='none';
+        HW.wrong++; HW.qmiss++; gotItWrong();
+        b.classList.add('wrong'); b.style.pointerEvents='none';
+        if(HW.qmiss>=2) easeOff(box, x=>x.textContent!==w);
         setTimeout(()=> say(w,{rate:0.75}),220);
       }
     };
@@ -1926,6 +2155,7 @@ function startStory(n, reread){
   const L = n ? LEVELS[n-1] : LV;
   LV=L;
   ST={L:L, p:0, reading:false, reread:!!reread};
+  if(!reread) questStart(L.book.pages.length);
   show('scr-story');
   tell(reread ? 'Let us read it again.' : 'Let us read the book.');
   drawStory();
@@ -1955,6 +2185,7 @@ function drawStory(){
 $('storyPrev').onclick = ()=>{ if(ST.p>0){ ST.p--; drawStory(); } };
 $('storyNext').onclick = ()=>{
   const bk=ST.L.book;
+  gotItRight($('storyNext'),'📖');
   if(ST.p<bk.pages.length-1){ ST.p++; drawStory(); return; }
   const n=ST.L.n, first=S.books.indexOf(n)<0;
   if(first){ S.books.push(n); S.at=Math.min(LEVELS.length,n+1); }
@@ -1964,8 +2195,9 @@ $('storyNext').onclick = ()=>{
   cheer('You read "'+bk.title+'"!', 2,
         first ? 'Route ' + Math.min(LEVELS.length,n+1) + ' is open.' : 'Read it again any time.',
         ()=>{
-          const mon = S.wild ? wildPick() : null;
-          if(mon) startWild(mon); else goHome();
+          const waiting = Q ? Q.mon : null;
+          questHide();
+          if(waiting) startWild(waiting, true); else goHome();
         });
 };
 $('storyRead').onclick = ()=>{
@@ -2045,6 +2277,7 @@ function openAdult(){
   $('gbToggle').classList.toggle('on', !!S.gb);
   $('autoToggle').classList.toggle('on', !!S.auto);
   $('wildToggle').classList.toggle('on', !!S.wild);
+  $('sfxToggle').classList.toggle('on', !!S.sfx);
   $('rateRange').value=S.rate; setRateLabel();
   renderRecGrid();
   show('scr-adult');
@@ -2057,6 +2290,7 @@ $('voiceToggle').onclick=()=>{ S.voiceInstr=!S.voiceInstr; save(); $('voiceToggl
 $('gbToggle').onclick=()=>{ S.gb=!S.gb; save(); $('gbToggle').classList.toggle('on',S.gb); pickVoice(); say('Hello, ready to read?'); };
 $('autoToggle').onclick=()=>{ S.auto=!S.auto; save(); $('autoToggle').classList.toggle('on',S.auto); };
 $('wildToggle').onclick=()=>{ S.wild=!S.wild; save(); $('wildToggle').classList.toggle('on',S.wild); };
+$('sfxToggle').onclick=()=>{ S.sfx=!S.sfx; save(); $('sfxToggle').classList.toggle('on',S.sfx); if(S.sfx) sfxRight(); };
 $('nameInput').addEventListener('input', e=>{ S.name=e.target.value.slice(0,14); save(); });
 $('rateRange').addEventListener('input', e=>{ S.rate=parseInt(e.target.value,10); save(); setRateLabel(); });
 $('rateRange').addEventListener('change', ()=> say('The cat sat on the mat.'));
@@ -2181,8 +2415,28 @@ function stopRec(){
 function dismissSplash(){
   const sp=$('splash');
   if(!sp || sp.classList.contains('gone')) return;
+
+  /* Home draws the same artwork, smaller and higher up. Fly the splash copy
+     onto that exact rectangle first, so it lands on its twin instead of
+     cutting to a different size and position. */
+  const hero=$('splashHero');
+  const target=document.querySelector('#homeFace img');
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(hero && target && !still){
+    const a=hero.getBoundingClientRect(), b=target.getBoundingClientRect();
+    if(a.height>4 && b.height>4){
+      /* heroIn has fill-mode:both, and an animation outranks an inline style,
+         so it must be cleared before the transform will take effect */
+      hero.style.animation='none';
+      void hero.offsetWidth;
+      hero.style.transformOrigin='50% 50%';
+      hero.style.transform =
+        'translate('+((b.left+b.width/2)-(a.left+a.width/2))+'px,'+
+                     ((b.top+b.height/2)-(a.top+a.height/2))+'px) scale('+(b.height/a.height)+')';
+    }
+  }
   sp.classList.add('gone');
-  setTimeout(()=>{ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 700);
+  setTimeout(()=>{ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 900);
 }
 (function splashBoot(){
   const sp=$('splash'); if(!sp) return;
@@ -2191,7 +2445,7 @@ function dismissSplash(){
     hero.addEventListener('error', ()=>{ hero.style.display='none'; });
   }
   /* Fixed on-screen time. Nothing to wait for, so it can never hang or flash. */
-  setTimeout(dismissSplash, 1900);
+  setTimeout(dismissSplash, 1500);
   sp.addEventListener('pointerdown', dismissSplash);
 })();
 
