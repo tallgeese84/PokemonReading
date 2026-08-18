@@ -1,9 +1,9 @@
 /* Poké Reading — service worker
    Bump CACHE on every deploy. Upload this file together with index.html;
    uploading index.html alone is what leaves a device stuck on an old build. */
-const CACHE = 'poke-reading-v1';
-const SPRITES = 'poke-reading-sprites-v1';
-const CORE = ['./', './index.html', './manifest.webmanifest'];
+const CACHE = 'poke-reading-v3';
+const SPRITES = 'poke-reading-sprites-v2';
+const CORE = ['./', './index.html', './manifest.webmanifest', './splash.webp', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
