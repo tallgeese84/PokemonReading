@@ -105,7 +105,7 @@ button{font-family:inherit;}
 .screen.active{display:block;animation:rise .28s ease;}
 /* meet / hunt / blend / build / heart put content straight on the page, so they
    need a sheet of paper under it to stay readable on grass. */
-#scr-meet.active,#scr-hunt.active,#scr-blend.active,#scr-build.active,#scr-heart.active{
+#scr-write.active,#scr-shapes.active,#scr-meet.active,#scr-hunt.active,#scr-blend.active,#scr-build.active,#scr-heart.active{
   background:rgba(255,253,247,.95);
   background-image:repeating-linear-gradient(180deg,transparent 0 43px,rgba(230,220,201,.5) 43px 44px);
   border:3px solid rgba(255,255,255,.85);border-radius:28px;
@@ -190,6 +190,40 @@ button{font-family:inherit;}
 .quietlink{display:block;margin:16px auto 0;background:none;border:none;color:#fff;font-size:1.05rem;
   font-weight:800;text-decoration:underline;cursor:pointer;padding:10px;text-shadow:0 2px 6px rgba(24,52,20,.5);}
 .cheer .quietlink{color:var(--ink-soft);text-shadow:none;font-weight:700;}
+
+/* shape matching: the letter IS the task, so tiles are big, plain and
+   well apart — nothing to scan past, no second thing to think about */
+.shapetile{min-width:96px;height:112px;padding:0 18px;border-radius:22px;border:4px solid var(--rule);
+  background:#fff;font-family:var(--read);font-weight:700;font-size:3.6rem;color:var(--sea);
+  cursor:pointer;box-shadow:0 6px 0 rgba(38,36,63,.10);line-height:1;}
+.shapetile[data-cls="vowel"]{color:var(--berry);}
+.shapetile[data-cls="team"]{color:var(--lilac);}
+.shapetile:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(38,36,63,.10);}
+.shapetile.right{border-color:var(--leaf);background:#EAF8F1;}
+.shapetile.wrong{border-color:var(--berry);animation:shake .35s;}
+.lettergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:10px;}
+.lettercell{height:80px;border-radius:16px;border:3px solid var(--rule);background:#fff;cursor:pointer;
+  font-family:var(--read);font-weight:700;font-size:2.1rem;color:var(--sea);}
+.lettercell[data-cls="vowel"]{color:var(--berry);}
+.lettercell[data-cls="team"]{color:var(--lilac);}
+.lettercell:active{transform:translateY(3px);}
+
+/* handwriting: one big sheet of paper, nothing else competing for the finger */
+.writebox{background:#fff;border:3px solid var(--rule);border-radius:24px;padding:8px;
+  box-shadow:inset 0 2px 8px rgba(38,36,63,.06);touch-action:none;}
+.writebox svg{width:100%;height:auto;display:block;max-height:46vh;touch-action:none;}
+.wguide{stroke:#E6DCC9;stroke-width:1.4;}
+.wbase{stroke:#D2C4A8;stroke-width:2;}
+.wghost{fill:none;stroke:#EFE7D7;stroke-width:11;stroke-linecap:round;stroke-linejoin:round;}
+.wdone{fill:none;stroke:var(--sea);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;}
+.wnext{fill:none;stroke:#B9C9D6;stroke-width:8;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:1.5 7;opacity:.95;}
+.wink{fill:none;stroke:var(--berry);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;}
+.wstart{fill:var(--leaf);}
+.wstart-ring{fill:none;stroke:var(--leaf);stroke-width:2.5;opacity:.55;}
+@keyframes pulsering{0%{r:7;opacity:.65;}70%{r:14;opacity:0;}100%{r:14;opacity:0;}}
+.wstart-ring{animation:pulsering 1.5s ease-out infinite;}
+.wdot{fill:var(--sun);stroke:#8a6a00;stroke-width:1.5;}
 
 /* the build stamp — deliberately faint, it is for the grown-up */
 .vertag{display:block;width:100%;margin:14px 0 2px;background:none;border:none;cursor:pointer;
@@ -565,7 +599,39 @@ input[type=text]{width:100%;padding:13px;border-radius:13px;border:2px solid var
     <div class="teamstrip" id="teamStrip"></div>
     <p class="nextnote" id="teamCaption" style="margin:10px 0 0"></p>
     <button class="quietlink" id="dexLink">see them all</button>
+    <button class="quietlink" id="lettersLink" style="margin-top:0">my letters</button>
     <button class="vertag" id="verTag" aria-label="version"></button>
+  </section>
+
+  <!-- ================= FIND THE SAME LETTER ================= -->
+  <section id="scr-shapes" class="screen">
+    <p class="keyword" id="shapeHint" style="margin:2px 0 8px">Find the same one</p>
+    <div class="wordstage"><div class="soundbar" id="shapeTarget"></div></div>
+    <div class="tilegrid" id="shapeOpts"></div>
+  </section>
+
+  <!-- ================= WRITE IT ================= -->
+  <section id="scr-write" class="screen">
+    <p class="keyword" id="writeHint" style="margin:2px 0 10px">Trace the green dot</p>
+    <div class="writebox"><svg id="writeSvg" viewBox="0 0 100 140" aria-label="tracing sheet"></svg></div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn ghost" id="writeShow">👀 Show me</button>
+      <button class="btn ghost" id="writeAgain">↺ Again</button>
+    </div>
+  </section>
+
+  <!-- ================= MY LETTERS ================= -->
+  <section id="scr-letters" class="screen">
+    <div class="card">
+      <button class="barbtn" id="lettersBack" style="float:right">✕</button>
+      <h2 class="title">My letters</h2>
+      <p class="sub" id="lettersHint">Every sound he has met so far. Tap one to hear it.</p>
+      <div class="btnrow" style="margin-bottom:14px">
+        <button class="btn ghost" id="modeHear">🔊 Hear it</button>
+        <button class="btn ghost" id="modeWrite">✏️ Write it</button>
+      </div>
+      <div class="lettergrid" id="lettersGrid"></div>
+    </div>
   </section>
 
   <!-- ================= MEET THE SOUNDS ================= -->
@@ -696,8 +762,12 @@ input[type=text]{width:100%;padding:13px;border-radius:13px;border:2px solid var
         <div class="row"><span class="k">Keep going automatically after each game</span><button class="toggle" id="autoToggle"><i></i></button></div>
         <div class="row"><span class="k">Wild Pokémon after every game</span><button class="toggle" id="wildToggle"><i></i></button></div>
         <div class="row"><span class="k">Sound effects</span><button class="toggle" id="sfxToggle"><i></i></button></div>
+        <div class="row"><span class="k">Say letter names too (ess, bee, see)</span><button class="toggle" id="namesToggle"><i></i></button></div>
       </div>
       <div style="height:12px"></div>
+      <p class="sub" style="margin:0 0 12px">Letter names are off by default on purpose. A child who learns
+      "bee ay tee" tends to blend the <i>names</i>, and "bat" never comes out. Sounds first — names are easy
+      to pick up afterwards.</p>
       <label class="sub" style="display:block;margin:0 0 4px">Speaking speed</label>
       <input type="range" id="rateRange" min="50" max="110" step="5">
       <p class="sub" style="margin:0" id="rateLabel"></p>
@@ -1155,6 +1225,7 @@ function freshState(){
     auto:true,        /* roll straight into the next game             */
     wild:true,        /* a Pokemon appears after each game            */
     sfx:true,         /* chimes on correct answers                     */
+    names:false,      /* say letter names as well as sounds             */
     family:'',        /* family code — the same one on every device    */
     syncedAt:0,
     buddy:null,       /* the one who stands beside him at home         */
@@ -1510,7 +1581,7 @@ function award(n, act, stars){
    Keep APP_VERSION in step with CACHE in sw.js — if the two disagree,
    the service worker is serving something stale.
    ========================================================= */
-const APP_VERSION = '1.7.1';
+const APP_VERSION = '1.9.0';
 const APP_BUILT   = '2026-08-18';
 
 /* =========================================================
@@ -1670,6 +1741,41 @@ function syncSoon(){
 }
 
 /* =========================================================
+   LETTER SHAPES
+   Sound Hunt asks two things at once: hold a sound in mind AND
+   recognise a letterform. If the shapes are not solid yet, the sound
+   part never gets a chance. This stage does shapes only.
+   Distractors come from the pairs children actually muddle, so the
+   practice lands where it is needed rather than being random.
+   ========================================================= */
+const CONFUSE = {
+  b:['d','p','q','h'], d:['b','p','q','a'], p:['q','b','d','g'], q:['p','g','b','d'],
+  n:['u','m','h','r'], u:['n','v','w','y'], m:['w','n','h'],     w:['m','v','u'],
+  i:['l','j','t'],     l:['i','t','j'],     t:['f','l','i'],     f:['t','l','r'],
+  s:['z','c','e'],     z:['s','x','n'],     c:['e','o','s'],     e:['c','o','a'],
+  o:['c','e','a','g'], a:['e','o','c','d'], g:['q','y','p','a'], y:['g','v','x'],
+  v:['w','y','u'],     h:['n','b','k'],     k:['h','x','r'],     r:['n','f','k'],
+  x:['k','y','z'],     j:['i','g','y']
+};
+const LETTER_NAME = {
+  a:'ay', b:'bee', c:'see', d:'dee', e:'ee', f:'eff', g:'jee', h:'aitch', i:'eye',
+  j:'jay', k:'kay', l:'ell', m:'em', n:'en', o:'oh', p:'pee', q:'cue', r:'ar',
+  s:'ess', t:'tee', u:'you', v:'vee', w:'double you', x:'ex', y:'why', z:'zed'
+};
+function sayLetterName(g){
+  if(!S.names) return;
+  const n=LETTER_NAME[g]; if(!n) return;
+  setTimeout(()=> say('the letter '+((g==='z' && !S.gb) ? 'zee' : n), {rate:0.8}), 320);
+}
+/* fewer things to choose between early on, more once he is steadier */
+function choiceCount(){
+  const n = LV ? LV.n : 1;
+  return n<=2 ? 2 : (n<=5 ? 3 : 4);
+}
+function classOf(g){ return (G[g] && G[g][3]==='vowel') ? 'vowel' : (g.length>1 ? 'team' : 'cons'); }
+function label(g){ return g.indexOf('_')>=0 ? g.replace('_','–') : g; }
+
+/* =========================================================
    THE QUEST STRIP
    ========================================================= */
 let Q=null;
@@ -1718,9 +1824,9 @@ function easeOff(container, isWrong){
    THE CONVEYOR
    The app decides what is next. There is no menu.
    ========================================================= */
-const ORDER=['meet','hunt','blend','build','heart','story'];
-const TASK_NAME={meet:'meeting the new sounds', hunt:'finding sounds', blend:'blending words',
-                 build:'building words', heart:'heart words', story:'the book'};
+const ORDER=['shapes','meet','write','hunt','blend','build','heart','story'];
+const TASK_NAME={shapes:'spotting the new letters', meet:'meeting the new sounds', write:'writing the letters', hunt:'finding sounds',
+                 blend:'blending words', build:'building words', heart:'heart words', story:'the book'};
 
 function currentStopN(){
   const derived = Math.min(LEVELS.length, S.books.length+1);
@@ -1728,16 +1834,22 @@ function currentStopN(){
 }
 function nextTask(){
   const n=currentStopN(), L=LEVELS[n-1];
-  const acts=ORDER.filter(a=> a!=='meet' || L.add.length);
+  const acts=ORDER.filter(a=>{
+    if(a==='write') return writeSet(L).length>0;
+    if(a==='meet' || a==='shapes') return L.add.length>0;
+    return true;
+  });
   for(let i=0;i<acts.length;i++){ if(!S.done[n+':'+acts[i]]) return {n:n, act:acts[i]}; }
   if(n<LEVELS.length){ S.at=n+1; save(); return nextTask(); }
-  return {n:1+Math.floor(Math.random()*LEVELS.length), act:pick(['hunt','blend','build','heart'])};
+  return {n:1+Math.floor(Math.random()*LEVELS.length), act:pick(['shapes','hunt','blend','build','heart'])};
 }
 
 let LV=null;
 function runTask(t){
   LV=LEVELS[t.n-1];
-  if(t.act==='meet') startMeet();
+  if(t.act==='shapes') startShapes();
+  else if(t.act==='write') startWrite();
+  else if(t.act==='meet') startMeet();
   else if(t.act==='hunt') startHunt();
   else if(t.act==='blend') startBlend();
   else if(t.act==='build') startBuild();
@@ -1946,7 +2058,52 @@ function goHome(){
 }
 $('playBtn').onclick = ()=>{ warmUpVoice(); playNext(); };
 $('homeFace').onclick = ()=> say('Hi ' + (S.name||'Jonah') + '. Let us read!', {rate:0.85});
+(function(){
+  const sv=$('writeSvg');
+  sv.addEventListener('pointerdown', writeDown);
+  sv.addEventListener('pointermove', writeMove);
+  sv.addEventListener('pointerup', writeUp);
+  sv.addEventListener('pointercancel', writeUp);
+  sv.addEventListener('pointerleave', writeUp);
+  sv.addEventListener('touchstart', e=>e.preventDefault(), {passive:false});
+})();
+$('writeShow').onclick = showStroke;
+$('writeAgain').onclick = ()=>{ if(WR){ WR.stroke=0; drawWrite(); } };
+
 $('dexLink').onclick = openDex;
+$('lettersLink').onclick = openLetters;
+$('lettersBack').onclick = goHome;
+$('modeHear').onclick = ()=> setLettersMode('hear');
+$('modeWrite').onclick = ()=> setLettersMode('write');
+let lettersMode='hear';
+function setLettersMode(m){
+  lettersMode=m;
+  $('modeHear').classList.toggle('sun', m==='hear');
+  $('modeWrite').classList.toggle('sun', m==='write');
+  $('lettersHint').textContent = m==='write'
+    ? 'Tap a letter to practise writing it.'
+    : 'Every sound he has met so far. Tap one to hear it.';
+}
+function openLetters(){
+  hideBar();
+  setLettersMode(lettersMode);
+  const at=currentStopN();
+  const gs=graphemesUpTo(at);
+  const box=$('lettersGrid'); box.innerHTML='';
+  gs.forEach(g=>{
+    const b=document.createElement('button');
+    b.className='lettercell'; b.type='button';
+    b.setAttribute('data-cls', classOf(g));
+    b.textContent=label(g);
+    b.onclick=()=>{
+      b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+      if(lettersMode==='write' && g.length===1 && WRITE[g]){ startWrite(g); return; }
+      sayGrapheme(g); sayLetterName(g);
+    };
+    box.appendChild(b);
+  });
+  show('scr-letters');
+}
 $('verTag').onclick = ()=> $('gearBtn').click();
 
 let warmed=false;
@@ -1987,6 +2144,252 @@ function openDex(){
 $('dexBack').onclick = goHome;
 
 /* =========================================================
+   WRITING
+   Forming a letter by hand strengthens recognising it, so this feeds
+   straight back into the reading. Stroke order is the point: most
+   letters start at the top, and the round family (a c d g o q) runs
+   anticlockwise. The tolerance is deliberately generous — this is a
+   five-year-old's finger, not a calligraphy exam.
+   Box is 100x140: ascender 14, x-height 56, baseline 112, descender 138.
+   ========================================================= */
+const WRITE = {
+  a:['M 70 66 A 27 27 0 1 0 70 102','M 72 56 L 72 112'],
+  b:['M 24 14 L 24 112','M 24 62 A 26 26 0 1 1 24 112'],
+  c:['M 70 66 A 27 27 0 1 0 70 102'],
+  d:['M 70 66 A 27 27 0 1 0 70 102','M 74 14 L 74 112'],
+  e:['M 20 86 L 70 86 C 70 62 40 52 26 72 C 12 92 26 116 68 104'],
+  f:['M 68 28 C 48 12 32 26 32 48 L 32 112','M 16 60 L 52 60'],
+  g:['M 70 66 A 27 27 0 1 0 70 102','M 72 56 L 72 122 C 72 136 54 138 42 132'],
+  h:['M 26 14 L 26 112','M 26 76 C 30 58 66 54 70 76 L 70 112'],
+  i:['M 50 56 L 50 112','M 50 34 L 50 40'],
+  j:['M 56 56 L 56 122 C 56 136 40 138 30 130','M 56 34 L 56 40'],
+  k:['M 26 14 L 26 112','M 68 58 L 28 86','M 42 76 L 70 112'],
+  l:['M 50 14 L 50 112'],
+  m:['M 22 56 L 22 112','M 22 74 C 26 56 48 54 50 74 L 50 112','M 50 74 C 54 56 76 54 78 74 L 78 112'],
+  n:['M 28 56 L 28 112','M 28 74 C 32 58 68 54 72 76 L 72 112'],
+  o:['M 50 56 A 27 27 0 0 0 50 110 A 27 27 0 0 0 50 56'],
+  p:['M 24 56 L 24 138','M 24 62 A 26 26 0 1 1 24 112'],
+  q:['M 72 66 A 27 27 0 1 0 72 102','M 74 56 L 74 138'],
+  r:['M 30 56 L 30 112','M 30 74 C 36 58 58 54 72 62'],
+  s:['M 68 66 C 58 56 30 56 28 70 C 26 84 66 84 68 98 C 70 112 40 112 30 102'],
+  t:['M 44 22 L 44 100 C 44 110 54 112 62 108','M 26 56 L 62 56'],
+  u:['M 28 56 L 28 92 C 28 112 68 112 68 92 L 68 56','M 68 60 L 68 112'],
+  v:['M 26 56 L 50 112 L 74 56'],
+  w:['M 20 56 L 34 112 L 50 68 L 66 112 L 80 56'],
+  x:['M 28 56 L 72 112','M 72 56 L 28 112'],
+  y:['M 28 56 L 50 106','M 72 56 L 44 128 C 40 138 28 138 22 132'],
+  z:['M 26 58 L 72 58 L 28 110 L 74 110']
+};
+const SVGNS='http://www.w3.org/2000/svg';
+const W_TOL=17;        /* how far off the line he may stray, in box units */
+const W_SAMPLES=64;
+
+/* Which letters does a route ask him to write? Its own single letters, plus
+   any letter hiding inside a team that is never taught alone anywhere else.
+   Without that second clause 'q' is never written: it only ever appears as
+   'qu', and he would finish the app having formed 25 of the 26 letters. */
+const TAUGHT_ALONE = (function(){
+  const t={}; LEVELS.forEach(L=>L.add.forEach(g=>{ if(g.length===1) t[g]=1; })); return t;
+})();
+function writeSet(L){
+  const out=[];
+  L.add.forEach(g=>{
+    if(g.length===1){ if(WRITE[g] && out.indexOf(g)<0) out.push(g); return; }
+    g.replace('_','').split('').forEach(ch=>{
+      if(WRITE[ch] && !TAUGHT_ALONE[ch] && out.indexOf(ch)<0) out.push(ch);
+    });
+  });
+  return out;
+}
+let WR=null;
+function startWrite(solo){
+  const letters = solo ? [solo] : writeSet(LV);
+  if(!letters.length){ finishAct('write', true, 'Nothing to write here', ''); return; }
+  WR={q:letters, i:0, stroke:0, wrong:0, solo:!!solo};
+  if(!solo) questStart(letters.length);
+  show('scr-write');
+  tell('Trace the letter. Start on the green dot.');
+  drawWrite();
+}
+function el(tag, attrs){
+  const e=document.createElementNS(SVGNS,tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function drawWrite(){
+  const g=WR.q[WR.i], strokes=WRITE[g];
+  const svg=$('writeSvg');
+  svg.innerHTML='';
+  if(!WR.solo) setBar(WR.q.length, WR.i, ()=> sayGrapheme(g));
+  else { $('abar').classList.add('on'); $('barPips').innerHTML=''; $('barSay').classList.remove('hidden');
+         barReplay=()=> sayGrapheme(g); }
+
+  svg.appendChild(el('line',{x1:5,y1:56,x2:95,y2:56,class:'wguide','stroke-dasharray':'4 4'}));
+  svg.appendChild(el('line',{x1:5,y1:112,x2:95,y2:112,class:'wbase'}));
+  strokes.forEach(d=> svg.appendChild(el('path',{d:d,class:'wghost'})));
+  for(let i=0;i<WR.stroke;i++) svg.appendChild(el('path',{d:strokes[i],class:'wdone'}));
+
+  if(WR.stroke>=strokes.length){ letterDone(g); return; }
+
+  WR.guide = el('path',{d:strokes[WR.stroke],class:'wnext'});
+  svg.appendChild(WR.guide);
+  WR.ink = el('path',{d:'',class:'wink'});
+  svg.appendChild(WR.ink);
+
+  const len=WR.guide.getTotalLength();
+  WR.pts=[];
+  for(let i=0;i<W_SAMPLES;i++){
+    const pt=WR.guide.getPointAtLength(len*i/(W_SAMPLES-1));
+    WR.pts.push({x:pt.x,y:pt.y});
+  }
+  WR.reached=0; WR.drawing=false; WR.trail=[];
+
+  const p0=WR.pts[0];
+  svg.appendChild(el('circle',{cx:p0.x,cy:p0.y,r:7,class:'wstart-ring'}));
+  svg.appendChild(el('circle',{cx:p0.x,cy:p0.y,r:5.5,class:'wstart'}));
+  $('writeHint').textContent = strokes.length>1
+    ? 'Stroke ' + (WR.stroke+1) + ' of ' + strokes.length
+    : 'Trace the green dot';
+  setTimeout(()=> sayGrapheme(g), 340);
+}
+function svgPoint(evt){
+  const svg=$('writeSvg'), r=svg.getBoundingClientRect();
+  const vb=svg.viewBox.baseVal;
+  /* viewBox is 100x140 and the box keeps its ratio, so a linear map is exact */
+  const scale=Math.min(r.width/vb.width, r.height/vb.height);
+  const ox=(r.width - vb.width*scale)/2, oy=(r.height - vb.height*scale)/2;
+  return { x:(evt.clientX - r.left - ox)/scale, y:(evt.clientY - r.top - oy)/scale };
+}
+function d2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
+function writeDown(e){
+  if(!WR || !WR.pts) return;
+  const p=svgPoint(e);
+  const nearStart = d2(p,WR.pts[0]) < (W_TOL*1.7)*(W_TOL*1.7);
+  const nearHere  = d2(p,WR.pts[WR.reached]) < (W_TOL*1.7)*(W_TOL*1.7);
+  if(!nearStart && !nearHere){
+    $('writeHint').textContent='Start on the green dot';
+    return;
+  }
+  if(nearStart && WR.reached<3){ WR.reached=0; WR.trail=[]; }
+  WR.drawing=true;
+  e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+  writeMove(e);
+}
+function writeMove(e){
+  if(!WR || !WR.drawing) return;
+  e.preventDefault();
+  const p=svgPoint(e);
+  WR.trail.push(p);
+  WR.ink.setAttribute('d','M '+WR.trail.map(q=>q.x.toFixed(1)+' '+q.y.toFixed(1)).join(' L '));
+  const lim=Math.min(W_SAMPLES-1, WR.reached+12);
+  for(let j=WR.reached;j<=lim;j++){
+    if(d2(p,WR.pts[j]) < W_TOL*W_TOL) WR.reached=j;
+  }
+  if(WR.reached>=W_SAMPLES-6) finishStroke();
+}
+function writeUp(){
+  if(!WR || !WR.drawing) return;
+  WR.drawing=false;
+  if(WR.reached>=W_SAMPLES-6){ finishStroke(); return; }
+  if(WR.reached>4){
+    $('writeHint').textContent='Keep going from where you stopped';
+  } else {
+    WR.trail=[]; WR.ink.setAttribute('d','');
+    $('writeHint').textContent='Start on the green dot';
+  }
+}
+function finishStroke(){
+  if(!WR || WR.done) return;
+  WR.drawing=false;
+  const g=WR.q[WR.i];
+  WR.stroke++;
+  sfxReveal();
+  setTimeout(drawWrite, 260);
+}
+function letterDone(g){
+  WR.done=true;
+  gotItRight($('writeSvg'),'✏️');
+  sayGrapheme(g);
+  $('writeHint').textContent='You wrote ' + g + '!';
+  setTimeout(()=>{
+    WR.done=false;
+    if(WR.solo){ openLetters(); return; }
+    if(WR.i<WR.q.length-1){ WR.i++; WR.stroke=0; drawWrite(); }
+    else finishAct('write', WR.wrong===0, 'You wrote them all!', '');
+  }, 1100);
+}
+/* trace the stroke for him, slowly */
+function showStroke(){
+  if(!WR || !WR.guide) return;
+  const svg=$('writeSvg');
+  const dot=el('circle',{r:6,class:'wdot',cx:WR.pts[0].x,cy:WR.pts[0].y});
+  svg.appendChild(dot);
+  let i=0;
+  const timer=setInterval(()=>{
+    i+=1.4;
+    if(i>=W_SAMPLES-1){ clearInterval(timer); setTimeout(()=>dot.remove(),260); return; }
+    const p=WR.pts[Math.floor(i)];
+    dot.setAttribute('cx',p.x); dot.setAttribute('cy',p.y);
+  }, 26);
+}
+
+/* =========================================================
+   0 · FIND THE SAME LETTER
+   ========================================================= */
+let SH=null;
+function startShapes(){
+  const fresh=LV.add.filter(g=>['ll','ss','ff','zz'].indexOf(g)<0);
+  const q=fresh.length?fresh.slice():LV.add.slice();
+  SH={q:q, i:0, wrong:0, miss:0};
+  questStart(q.length);
+  show('scr-shapes'); tell('Find the letter that looks the same.');
+  drawShapes();
+}
+function drawShapes(){
+  const t=SH.q[SH.i];
+  setBar(SH.q.length, SH.i, ()=>{ sayGrapheme(t); sayLetterName(t); });
+  const tiles=renderSoundBar($('shapeTarget'), [{g:label(t), sound:(G[t]?G[t][0]:t), cls:classOf(t)}], {mute:true});
+  tiles[0].style.cursor='pointer';
+  tiles[0].onclick=()=>{ flash(tiles[0]); sayGrapheme(t); };
+
+  const taught=graphemesUpTo(LV.n).filter(g=>g!==t && ['ll','ss','ff','zz'].indexOf(g)<0);
+  const near=(CONFUSE[t]||[]).filter(g=>taught.indexOf(g)>=0);
+  const rest=taught.filter(g=>near.indexOf(g)<0);
+  const need=choiceCount()-1;
+  let others=shuffle(near).slice(0,need);
+  if(others.length<need) others=others.concat(shuffle(rest).slice(0,need-others.length));
+
+  const opts=shuffle([t].concat(others));
+  const box=$('shapeOpts'); box.innerHTML='';
+  opts.forEach(g=>{
+    const b=document.createElement('button');
+    b.className='shapetile'; b.type='button';
+    b.setAttribute('data-cls', classOf(g));
+    b.textContent=label(g);
+    b.onclick=()=> shapePick(g,b,t);
+    box.appendChild(b);
+  });
+  setTimeout(()=>{ sayGrapheme(t); sayLetterName(t); }, 380);
+}
+function shapePick(g,btn,target){
+  if(g===target){
+    btn.classList.add('right');
+    [...$('shapeOpts').children].forEach(b=>b.style.pointerEvents='none');
+    gotItRight(btn,'🔤');
+    sayGrapheme(target);
+    setTimeout(()=>{
+      if(SH.i<SH.q.length-1){ SH.i++; SH.miss=0; drawShapes(); }
+      else finishAct('shapes', SH.wrong===0, 'You know these letters!', '');
+    },720);
+  } else {
+    SH.wrong++; SH.miss++; gotItWrong();
+    btn.classList.add('wrong'); setTimeout(()=>btn.classList.remove('wrong'),400);
+    if(SH.miss>=2) easeOff($('shapeOpts'), b=>b.textContent!==label(target));
+    setTimeout(()=> sayGrapheme(target),240);
+  }
+}
+
+/* =========================================================
    1 · MEET THE SOUNDS
    ========================================================= */
 let M=null;
@@ -2003,7 +2406,7 @@ function drawMeet(){
   tiles[0].onclick=()=>{ flash(tiles[0]); sayGrapheme(g); };
   setTimeout(()=>{ flash(tiles[0]); sayMeet(g); },420);
 }
-function sayMeet(g){ sayGrapheme(g,{done:()=> setTimeout(()=>say(G[g][1],{rate:0.8}),280)}); }
+function sayMeet(g){ sayGrapheme(g,{done:()=> setTimeout(()=>{ say(G[g][1],{rate:0.8}); sayLetterName(g); },280)}); }
 $('meetNext').onclick = ()=>{
   gotItRight($('meetNext'),'👂');
   if(M.i<LV.add.length-1){ M.i++; drawMeet(); }
@@ -2028,7 +2431,7 @@ function startHunt(){
 function drawHunt(){
   const target=H.q[H.i];
   setBar(HUNT_ROUNDS, H.i, ()=> sayGrapheme(target));
-  const opts=shuffle([target].concat(pickN(H.pool,3,[target])));
+  const opts=shuffle([target].concat(pickN(H.pool,choiceCount()-1,[target])));
   const box=$('huntOpts'); box.innerHTML='';
   opts.forEach(g=>{
     const b=document.createElement('button');
@@ -2239,7 +2642,7 @@ function drawHeartQuiz(){
   const w=HW.quiz[HW.qi];
   setBar(LV.heart.length*2, LV.heart.length+HW.qi, ()=> say(w,{rate:0.75}));
   const pool=heartUpTo(LV.n).filter(x=>x!==w);
-  const opts=shuffle([w].concat(pickN(pool,2,[w])));
+  const opts=shuffle([w].concat(pickN(pool,Math.max(1,choiceCount()-1),[w])));
   $('heartIcon').textContent='👂';
   $('heartWord').innerHTML='';
   $('heartGot').style.display='none';
@@ -2419,6 +2822,7 @@ function openAdult(){
   $('autoToggle').classList.toggle('on', !!S.auto);
   $('wildToggle').classList.toggle('on', !!S.wild);
   $('sfxToggle').classList.toggle('on', !!S.sfx);
+  $('namesToggle').classList.toggle('on', !!S.names);
   $('rateRange').value=S.rate; setRateLabel();
   renderRecGrid();
   show('scr-adult');
@@ -2432,6 +2836,8 @@ $('gbToggle').onclick=()=>{ S.gb=!S.gb; save(); $('gbToggle').classList.toggle('
 $('autoToggle').onclick=()=>{ S.auto=!S.auto; save(); $('autoToggle').classList.toggle('on',S.auto); };
 $('wildToggle').onclick=()=>{ S.wild=!S.wild; save(); $('wildToggle').classList.toggle('on',S.wild); };
 $('sfxToggle').onclick=()=>{ S.sfx=!S.sfx; save(); $('sfxToggle').classList.toggle('on',S.sfx); if(S.sfx) sfxRight(); };
+$('namesToggle').onclick=()=>{ S.names=!S.names; save(); $('namesToggle').classList.toggle('on',S.names);
+  if(S.names) say('the letter ess',{rate:0.8}); };
 $('nameInput').addEventListener('input', e=>{ S.name=e.target.value.slice(0,14); save(); });
 $('rateRange').addEventListener('input', e=>{ S.rate=parseInt(e.target.value,10); save(); setRateLabel(); });
 $('rateRange').addEventListener('change', ()=> say('The cat sat on the mat.'));
